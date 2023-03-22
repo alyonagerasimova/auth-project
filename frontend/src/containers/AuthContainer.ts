@@ -26,8 +26,12 @@ function useAuth() {
             }else if(event.key === AuthEvents.LOGIN){
                 await refreshToken();
             }
-        })
-    }, [clearToken, isAuthenticated, refreshToken])
+        });
+        window.authenticateCallback = async function () { //window.authenticateCallback
+            await refreshToken();
+            history.push('/');
+        };
+    }, [clearToken,history, isAuthenticated, refreshToken])
 
     const logout = useCallback(() => {
         clearToken().finally(() => {

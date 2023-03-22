@@ -1,22 +1,24 @@
-// import express from 'express';
-// import { requireAuth } from '../security/auth';
-// import {generateAccessToken, generateRefreshToken, parseTokenAndGetUserId} from '../utils/token-util';
-//
-// const router = express.Router();
-//
-// async function findUserById(userId) {
-// //TODO
-// }
-//
-// const generateTokensAndAuthenticateUser = async (res, userId) => {
-//
-//     const user = await findUserById(userId);
-//     const { token: access_token, expiration: token_expiration } = await generateAccessToken(userId);
-//     const { token: refreshToken } = generateRefreshToken(userId);
-//     res.cookie('refresh_token', refreshToken, { httpOnly: true });
-//     res.status(200).json({ access_token, token_expiration, user });
-// };
-//
+import express, { Request, Response } from 'express';
+import { requireAuth } from '../security/auth';
+import {generateAccessToken, generateRefreshToken, parseTokenAndGetUserId} from '../utils/token-util';
+import config from "../config/config";
+import passport from 'passport';
+
+const router = express.Router();
+
+async function findUserById(userId) {
+//TODO
+}
+
+const generateTokensAndAuthenticateUser = async (res, userId) => {
+
+    const user = await findUserById(userId);
+    const { token: access_token, expiration: token_expiration } = await generateAccessToken(userId);
+    const { token: refreshToken } = generateRefreshToken(userId);
+    res.cookie('refresh_token', refreshToken, { httpOnly: true });
+    res.status(200).json({ access_token, token_expiration, user });
+};
+
 // router.post('/register', (req, res) => {
 //     try {
 //         const { email } = req.body;
@@ -56,3 +58,23 @@
 //         handleError(res, error);
 //     }
 // });
+
+export const generateUserTokenAndRedirect = async (req: Request, res: Response) => {
+    const successRedirect = `${process.env.FRONTEND_URL}/authentication/redirect`;
+    const { token } = generateRefreshToken(req.currentUser?._id.toString());
+    res.cookie('refresh_token', token, { httpOnly: true });
+    res.redirect(successRedirect);
+};
+
+Object.keys(config.get('authentication') || {}).forEach((providerName) => {
+    const failureRedirect = `${process.env.FRONTEND_URL}"`;
+    const providerAuthMiddleware = passport.authenticate(providerName, {
+        session: false,
+        userProperty: 'currentUser',
+        failureRedirect,
+    });
+    router.get(`/auth/${providerName}`, providerAuthMiddleware);
+    router.get(`/auth/${providerName}/callback`, providerAuthMiddleware, generateUserTokenAndRedirect);
+});
+
+export default router;
